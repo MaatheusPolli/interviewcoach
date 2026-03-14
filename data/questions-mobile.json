@@ -1,0 +1,16 @@
+[
+  {
+    "id": "mo-001",
+    "track": "mobile",
+    "level": "mid",
+    "topic": "State Management",
+    "question": "Explain the difference between state and props in a mobile framework like Flutter or React Native.",
+    "expectedKeyPoints": [
+      "Props are passed from parent to child",
+      "State is managed within the component itself",
+      "Props are read-only; state can be updated",
+      "Changing either triggers a re-render"
+    ],
+    "followUp": "How do you lift state up in these frameworks?"
+  }
+]

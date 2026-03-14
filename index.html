@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterviewCoach — AI Simulator</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <button id="theme-toggle" class="theme-toggle" title="Alternar Tema">🌓</button>
+    <div class="container">
+        <header>
+            <h1>🗣️ InterviewCoach</h1>
+            <p>Master your technical interviews offline.</p>
+        </header>
+
+        <main id="app-root">
+            <!-- Home Screen -->
+            <section id="home-screen" class="screen">
+                <div class="card">
+                    <h2>Configurar Sessão</h2>
+                    <div class="form-group">
+                        <label>Trilha</label>
+                        <select id="track-select">
+                            <option value="frontend">Engenharia Frontend</option>
+                            <option value="backend">Engenharia Backend</option>
+                            <option value="data">Engenharia de Dados</option>
+                            <option value="mobile">Desenvolvimento Mobile</option>
+                            <option value="devops">DevOps & Cloud</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nível de Senioridade</label>
+                        <select id="level-select">
+                            <option value="junior">Júnior</option>
+                            <option value="mid">Pleno</option>
+                            <option value="senior">Sênior</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Modo</label>
+                        <select id="mode-select">
+                            <option value="quick">Prática Rápida (5 perguntas)</option>
+                            <option value="full">Entrevista Completa (10 perguntas com tempo)</option>
+                            <option value="deepdive">Mergulho Profundo (Perguntas com Follow-up)</option>
+                            <option value="weakness">Treinador de Fraquezas (Focar em pontos fracos)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Idioma da Entrevista</label>
+                        <select id="language-select">
+                            <option value="pt-BR">Português (Brasil)</option>
+                            <option value="en-US">English (US)</option>
+                            <option value="es-ES">Español (España)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Customização (Opcional)</label>
+                        <textarea id="jd-input" placeholder="Cole aqui a descrição da vaga (Job Description) para personalizar as perguntas..." style="min-height: 100px; font-size: 0.85rem;"></textarea>
+                    </div>
+                    <button id="start-btn" class="primary-btn">INICIAR ENTREVISTA</button>
+                    <button id="view-history-btn" class="secondary-btn">Ver Histórico</button>
+                </div>
+            </section>
+
+            <!-- Interview Screen -->
+            <section id="interview-screen" class="screen hidden">
+                <div class="interview-header">
+                    <span id="question-counter">Pergunta 1/5</span>
+                    <span id="timer" class="hidden">02:00</span>
+                </div>
+                <div class="card">
+                    <h2 id="question-text">Carregando pergunta...</h2>
+                    <div class="input-area">
+                        <textarea id="answer-input" placeholder="Digite sua resposta aqui ou use o microfone..."></textarea>
+                        <div class="voice-controls">
+                            <button id="mic-btn" class="mic-btn">
+                                <span class="mic-icon">🎤</span>
+                                <span class="mic-status">Clique para falar</span>
+                            </button>
+                            <div id="interim-transcript" class="interim-text"></div>
+                        </div>
+                    </div>
+                    <button id="submit-answer-btn" class="primary-btn">ENVIAR RESPOSTA</button>
+                </div>
+            </section>
+
+            <!-- Feedback Screen -->
+            <section id="feedback-screen" class="screen hidden">
+                <div class="card">
+                    <h2>Feedback da IA</h2>
+                    <div id="feedback-content">
+                        <!-- Filled by JS -->
+                    </div>
+                    <button id="next-question-btn" class="primary-btn">PRÓXIMA PERGUNTA</button>
+                </div>
+            </section>
+
+            <!-- Dashboard / Scorecard Screen -->
+            <section id="dashboard-screen" class="screen hidden">
+                <div class="card">
+                    <h2>Resultado da Sessão</h2>
+                    <div class="score-summary">
+                        <div class="overall-score">
+                            <span class="label">Pontuação Geral</span>
+                            <span id="final-score" class="value">0</span>
+                        </div>
+                        <canvas id="score-chart" width="300" height="300"></canvas>
+                    </div>
+                    <div id="weak-spots-list">
+                        <!-- Filled by JS -->
+                    </div>
+                    <div class="dashboard-actions">
+                        <button id="export-btn" class="secondary-btn">EXPORTAR RESULTADOS (JSON)</button>
+                        <button id="restart-btn" class="primary-btn">NOVA SESSÃO</button>
+                        <button id="home-btn" class="secondary-btn">VOLTAR AO INÍCIO</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- History Screen -->
+            <section id="history-screen" class="screen hidden">
+                <div class="card">
+                    <h2>Histórico de Entrevistas</h2>
+                    <div id="history-list">
+                        <!-- Filled by JS -->
+                    </div>
+                    <button id="back-home-btn" class="secondary-btn">VOLTAR AO INÍCIO</button>
+                </div>
+            </section>
+        </main>
+
+        <footer class="copyright">
+            InterviewCoach - Matheus Gasparotto Polli - <span id="year"></span>
+        </footer>
+    </div>
+
+    <!-- AI Error Overlay -->
+    <div id="error-overlay" class="overlay hidden">
+        <div class="error-card">
+            <h2 id="error-title">⚠️ IA do Chrome não está pronta</h2>
+            <ul id="error-list"></ul>
+            <div id="download-progress-container" class="hidden">
+                <p>Baixando modelo de IA (Gemini Nano)...</p>
+                <div class="progress-bar-bg">
+                    <div id="download-progress-fill" class="progress-bar-fill"></div>
+                </div>
+                <p id="download-status">0%</p>
+            </div>
+            <p id="error-footer">Por favor, verifique suas flags e reinicie o Chrome.</p>
+        </div>
+    </div>
+
+    <script type="module" src="./index.js"></script>
+</body>
+</html>
