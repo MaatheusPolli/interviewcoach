@@ -1,0 +1,45 @@
+[
+  {
+    "id": "fe-001",
+    "track": "frontend",
+    "level": "mid",
+    "topic": "React Hooks",
+    "question": "Explain the difference between useEffect and useLayoutEffect.",
+    "expectedKeyPoints": [
+      "useEffect runs after paint",
+      "useLayoutEffect runs before paint synchronously",
+      "useLayoutEffect can cause performance issues if misused",
+      "useLayoutEffect is useful for DOM measurements"
+    ],
+    "followUp": "When would you choose one over the other in a real project?"
+  },
+  {
+    "id": "fe-002",
+    "track": "frontend",
+    "level": "junior",
+    "topic": "HTML",
+    "question": "What is the purpose of the <alt> attribute on an <img> tag?",
+    "expectedKeyPoints": [
+      "Accessibility for screen readers",
+      "Shows if image fails to load",
+      "Improves SEO",
+      "Provides context for the image"
+    ],
+    "followUp": "What happens if you leave the alt attribute empty?"
+  },
+  {
+    "id": "fe-003",
+    "track": "frontend",
+    "level": "senior",
+    "topic": "Performance",
+    "question": "How do you optimize a React application that is experiencing slow renders?",
+    "expectedKeyPoints": [
+      "Identify bottlenecks with Profiler",
+      "Memoization (useMemo, useCallback, React.memo)",
+      "Code splitting and lazy loading",
+      "Virtualization for long lists",
+      "Reducing state updates or lifting state down"
+    ],
+    "followUp": "How would you handle a performance issue caused by a 3rd-party library?"
+  }
+]

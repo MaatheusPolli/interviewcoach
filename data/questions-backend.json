@@ -1,0 +1,17 @@
+[
+  {
+    "id": "be-001",
+    "track": "backend",
+    "level": "mid",
+    "topic": "Databases",
+    "question": "What is the difference between SQL and NoSQL databases, and when would you use each?",
+    "expectedKeyPoints": [
+      "SQL is relational, NoSQL is non-relational",
+      "SQL has fixed schema, NoSQL is flexible",
+      "SQL scales vertically, NoSQL scales horizontally",
+      "Use SQL for ACID compliance and structured data",
+      "Use NoSQL for large volumes of unstructured data or high throughput"
+    ],
+    "followUp": "Can you give an example of a NoSQL database?"
+  }
+]

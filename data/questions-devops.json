@@ -1,0 +1,16 @@
+[
+  {
+    "id": "do-001",
+    "track": "devops",
+    "level": "junior",
+    "topic": "CI/CD",
+    "question": "What is the main goal of Continuous Integration (CI)?",
+    "expectedKeyPoints": [
+      "Automating code integration and testing",
+      "Detecting errors early in the development cycle",
+      "Ensuring code is always in a releasable state",
+      "Frequent small commits instead of infrequent large ones"
+    ],
+    "followUp": "What tools can you use for CI?"
+  }
+]

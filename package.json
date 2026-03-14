@@ -1,0 +1,22 @@
+{
+  "name": "interviewcoach",
+  "version": "1.0.0",
+  "description": "Simulador de entrevista técnica offline com IA integrada no Chrome (Gemini Nano)",
+  "main": "index.js",
+  "author": "Matheus Gasparotto Polli",
+  "license": "MIT",
+  "scripts": {
+    "start": "npx http-server . -p 8080 -c-1",
+    "test": "npx c8 node tests/integration.test.js"
+  },
+  "keywords": [
+    "AI",
+    "Gemini Nano",
+    "WebAI",
+    "Interview",
+    "Chrome"
+  ],
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

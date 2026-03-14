@@ -1,0 +1,16 @@
+[
+  {
+    "id": "da-001",
+    "track": "data",
+    "level": "senior",
+    "topic": "Big Data",
+    "question": "What is a Data Lake, and how is it different from a Data Warehouse?",
+    "expectedKeyPoints": [
+      "Data Lake stores raw, unstructured data; Warehouse stores structured data",
+      "Data Lake follows Schema-on-Read; Warehouse follows Schema-on-Write",
+      "Data Lake is more flexible and cost-effective for large datasets",
+      "Warehouse is better for reporting and business intelligence"
+    ],
+    "followUp": "When would you prefer a Data Lakehouse over these two?"
+  }
+]
