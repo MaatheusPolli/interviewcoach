@@ -57,12 +57,31 @@ export class VoiceService {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang || this.locale;
-    utterance.rate = 0.9;
+    const targetLang = lang || this.locale;
+    utterance.lang = targetLang;
+    utterance.rate = 1.0; // Slightly faster for natural feel
+    utterance.pitch = 1.0;
+
+    // Try to find a more natural voice
+    const voices = window.speechSynthesis.getVoices();
+    const naturalVoice = voices.find(v => 
+      v.lang.startsWith(targetLang.split('-')[0]) && 
+      (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Premium'))
+    );
+    
+    if (naturalVoice) {
+      utterance.voice = naturalVoice;
+    }
 
     if (onStart) utterance.onstart = onStart;
     if (onEnd) utterance.onend = onEnd;
 
     window.speechSynthesis.speak(utterance);
+  }
+
+  cancel() {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
   }
 }

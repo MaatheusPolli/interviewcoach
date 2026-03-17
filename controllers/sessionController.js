@@ -12,6 +12,7 @@ export class SessionController {
 
     this.isListening = false;
     this.isFollowUp = false;
+    this.isAudioEnabled = true;
   }
 
   async init(config) {
@@ -72,6 +73,7 @@ export class SessionController {
 
   startInterview() {
     this.views.interview.show(this.session.questions.length);
+    this.views.interview.toggleAudio(this.isAudioEnabled);
     this.nextQuestion();
     if (!this.listenersSet) {
       this.setupListeners();
@@ -82,10 +84,19 @@ export class SessionController {
   setupListeners() {
     this.views.interview.onMicClick(() => this.handleMicToggle());
     this.views.interview.onSubmit(() => this.handleSubmitAnswer());
+    this.views.interview.onAudioToggle(() => this.handleAudioToggle());
     this.views.feedback.onNext(() => this.handleNextStep());
     this.views.dashboard.onRestart(() => this.init(this.session.config));
     this.views.dashboard.onExport(() => this.handleExport());
     this.views.dashboard.onHome(() => window.location.reload());
+  }
+
+  handleAudioToggle() {
+    this.isAudioEnabled = !this.isAudioEnabled;
+    this.views.interview.toggleAudio(this.isAudioEnabled);
+    if (!this.isAudioEnabled) {
+      this.services.voice.cancel();
+    }
   }
 
   handleExport() {
@@ -99,23 +110,25 @@ export class SessionController {
     this.views.interview.updateCounter(this.session.currentIndex + 1, this.session.questions.length);
     this.views.interview.setQuestion(question.question);
     
-    this.services.voice.speak(
-      question.question, 
-      this.session.config.language,
-      () => {
-        if (this.isListening) {
-          this.services.voice.stopListening();
-          this.views.interview.toggleMic(false);
-          this.wasListeningBeforeSpeak = true;
+    if (this.isAudioEnabled) {
+      this.services.voice.speak(
+        question.question, 
+        this.session.config.language,
+        () => {
+          if (this.isListening) {
+            this.services.voice.stopListening();
+            this.views.interview.toggleMic(false);
+            this.wasListeningBeforeSpeak = true;
+          }
+        },
+        () => {
+          if (this.wasListeningBeforeSpeak) {
+            this.handleMicToggle();
+            this.wasListeningBeforeSpeak = false;
+          }
         }
-      },
-      () => {
-        if (this.wasListeningBeforeSpeak) {
-          this.handleMicToggle();
-          this.wasListeningBeforeSpeak = false;
-        }
-      }
-    );
+      );
+    }
 
     this.stopTimer();
     if (this.session.config.mode === 'full') {

@@ -9,7 +9,8 @@ export class InterviewView {
       micBtn: document.getElementById('mic-btn'),
       micStatus: document.querySelector('.mic-status'),
       interimTranscript: document.getElementById('interim-transcript'),
-      submitBtn: document.getElementById('submit-answer-btn')
+      submitBtn: document.getElementById('submit-answer-btn'),
+      audioToggleBtn: document.getElementById('audio-toggle-btn')
     };
   }
 
@@ -17,6 +18,20 @@ export class InterviewView {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     this.elements.screen.classList.remove('hidden');
     this.updateCounter(1, totalQuestions);
+  }
+
+  toggleAudio(isEnabled) {
+    if (isEnabled) {
+      this.elements.audioToggleBtn.classList.remove('muted');
+      this.elements.audioToggleBtn.textContent = '🔊';
+    } else {
+      this.elements.audioToggleBtn.classList.add('muted');
+      this.elements.audioToggleBtn.textContent = '🔇';
+    }
+  }
+
+  onAudioToggle(callback) {
+    this.elements.audioToggleBtn.addEventListener('click', callback);
   }
 
   updateCounter(current, total) {

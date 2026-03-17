@@ -1,11 +1,10 @@
-const CACHE_NAME = 'interviewcoach-v1';
+const CACHE_NAME = 'interviewcoach-v2';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './index.js',
   './manifest.json',
-  './SKILL.md',
   './services/aiService.js',
   './services/voiceService.js',
   './services/storageService.js',
