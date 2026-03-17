@@ -1,120 +1,104 @@
 export class AIService {
     constructor() {
         this.session = null;
-        this.abortController = null;
     }
 
     async checkRequirements() {
-        const errors = [];
-        const isChrome = !!window.chrome;
-        if (!isChrome) {
-            errors.push("⚠️ Este aplicativo requer o Google Chrome ou Chrome Canary (versão recente).");
+        // Tenta encontrar a IA em qualquer lugar (window, self, navigator)
+        let ai = null;
+        try { ai = window.ai; } catch(e) {}
+        if (!ai) { try { ai = self.ai; } catch(e) {} }
+        if (!ai) { try { ai = navigator.ai; } catch(e) {} }
+
+        const modelAPI = ai ? (ai.languageModel || ai.assistant) : null;
+
+        if (!modelAPI) {
+            console.warn("⚠️ IA Nativa (Gemini Nano) não detectada. O aplicativo seguirá, mas as avaliações de respostas falharão.");
+            // Retorna null para errors para NÃO BLOQUEAR a tela inicial
+            return { errors: null, availability: 'no' };
         }
 
-        if (!('ai' in self) || !('languageModel' in self.ai)) {
-            errors.push("⚠️ As APIs de IA nativas não estão ativas.");
-            errors.push("Ative as seguintes flags em chrome://flags/:");
-            errors.push("- Prompt API for Gemini Nano (chrome://flags/#prompt-api-for-gemini-nano)");
-            return errors;
-        }
-
-        const availability = await self.ai.languageModel.availability();
-        if (availability === 'no') {
-            errors.push(`⚠️ Seu dispositivo não suporta modelos de linguagem de IA nativos.`);
-        }
-
-        return { errors: errors.length > 0 ? errors : null, availability };
-    }
-
-    async downloadModel(onProgress) {
         try {
-            this.session = await self.ai.languageModel.create({
-                monitor(m) {
-                    m.addEventListener('downloadprogress', e => {
-                        const percent = Math.round((e.loaded / e.total) * 100);
-                        onProgress(percent);
-                    });
-                }
-            });
-            return true;
+            const availability = await modelAPI.availability();
+            return { errors: null, availability };
         } catch (e) {
-            return false;
+            return { errors: null, availability: 'readily' };
         }
     }
 
-    async extractSkillsFromJD(jdText, locale = 'pt-BR') {
-        try {
-            if (!this.session) this.session = await self.ai.languageModel.create();
-            const instruction = locale.startsWith('en') 
-                ? "Extract the top 5 technical skills from this JD. Return ONLY a JSON array of strings."
-                : locale.startsWith('es')
-                ? "Extrae as 5 principais habilidades técnicas desta vaga. Devuelve SOLO um array JSON de strings."
-                : "Extraia as 5 principais habilidades técnicas desta vaga. Retorne APENAS um array JSON de strings.";
-
-            const prompt = `${instruction}\nJD: ${jdText}`;
-            const response = await this.session.prompt(prompt);
-            const cleaned = response.substring(response.indexOf('['), response.lastIndexOf(']') + 1);
-            return JSON.parse(cleaned);
-        } catch (e) {
-            return [];
-        }
+    async getModel() {
+        if (this.session) return this.session;
+        
+        let ai = null;
+        try { ai = window.ai; } catch(e) {}
+        if (!ai) { try { ai = self.ai; } catch(e) {} }
+        if (!ai) { try { ai = navigator.ai; } catch(e) {} }
+        
+        if (!ai) throw new Error("AI API not found on window, self or navigator");
+        
+        const modelAPI = ai.languageModel || ai.assistant;
+        if (!modelAPI) throw new Error("languageModel or assistant API not found");
+        
+        this.session = await modelAPI.create();
+        return this.session;
     }
 
     async evaluateAnswer(questionText, expectedKeyPoints, candidateAnswer, locale = 'pt-BR') {
         try {
-            if (!this.session) this.session = await self.ai.languageModel.create();
-            
+            const session = await this.getModel();
             const langName = locale.startsWith('en') ? "English" : locale.startsWith('es') ? "Spanish" : "Portuguese";
 
             const prompt = `
 You are a Senior Technical Interviewer.
 Evaluate the candidate's answer based on the question and key points.
 The evaluation MUST be written in ${langName}.
-Return ONLY a JSON object with this structure:
+Return ONLY a JSON object:
 {
-  "totalScore": 0-10,
-  "feedback": "...",
+  "totalScore": 8,
+  "scores": { "accuracy": 8, "depth": 7, "clarity": 9, "examples": 6, "bestPractices": 7 },
   "strengths": ["...", "..."],
-  "improvements": ["...", "..."],
-  "dimensionAverages": { "technical": 0-10, "communication": 0-10, "precision": 0-10 }
+  "missing": ["...", "..."],
+  "improvement": "...",
+  "modelAnswer": "..."
 }
 
 Question: ${questionText}
 Expected Points: ${expectedKeyPoints.join(', ')}
 Candidate Answer: ${candidateAnswer}
 `;
-            const response = await this.session.prompt(prompt);
-            return this.parseAIResponse(response);
+            const response = await session.prompt(prompt);
+            const start = response.indexOf('{');
+            const end = response.lastIndexOf('}') + 1;
+            if (start === -1) throw new Error("Invalid AI response: No JSON found");
+            return JSON.parse(response.substring(start, end).trim());
         } catch (e) {
             console.error('AI Error:', e);
             throw e;
         }
     }
 
-    async askFollowUp(candidateAnswer, score, topic, locale = 'pt-BR') {
+    async extractSkillsFromJD(jdText, locale = 'pt-BR') {
         try {
-            if (!this.session) this.session = await self.ai.languageModel.create();
-            const langName = locale.startsWith('en') ? "English" : locale.startsWith('es') ? "Spanish" : "Portuguese";
-
-            const prompt = `
-Based on the candidate's answer about "${topic}", ask ONE challenging follow-up question to test deeper knowledge.
-The question must be in ${langName}.
-Candidate Answer: ${candidateAnswer}
-Current Score: ${score}/10
-`;
-            return await this.session.prompt(prompt);
+            const session = await this.getModel();
+            const prompt = `Extract top 5 technical skills from this JD as a JSON array of strings: ${jdText}`;
+            const response = await session.prompt(prompt);
+            const start = response.indexOf('[');
+            const end = response.lastIndexOf(']') + 1;
+            if (start === -1) return [];
+            return JSON.parse(response.substring(start, end));
         } catch (e) {
-            return null;
+            console.error("Skills extraction error:", e);
+            return [];
         }
     }
 
-    parseAIResponse(response) {
+    async askFollowUp(candidateAnswer, score, topic, locale = 'pt-BR') {
         try {
-            const start = response.indexOf('{');
-            const end = response.lastIndexOf('}') + 1;
-            if (start === -1 || end === 0) return null;
-            return JSON.parse(response.substring(start, end).trim());
-        } catch (error) {
+            const session = await this.getModel();
+            const langName = locale.startsWith('en') ? "English" : locale.startsWith('es') ? "Spanish" : "Portuguese";
+            const prompt = `Based on this answer about ${topic} (Score: ${score}/10), ask ONE short, challenging follow-up question in ${langName}: ${candidateAnswer}`;
+            return await session.prompt(prompt);
+        } catch (e) {
             return null;
         }
     }
