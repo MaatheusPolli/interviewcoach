@@ -3,25 +3,61 @@ export class AIService {
         this.session = null;
     }
 
-    async checkRequirements() {
-        // Tenta encontrar a IA em qualquer lugar (window, self, navigator)
-        let ai = null;
-        try { ai = window.ai; } catch(e) {}
-        if (!ai) { try { ai = self.ai; } catch(e) {} }
-        if (!ai) { try { ai = navigator.ai; } catch(e) {} }
+    /**
+     * Detector Universal e Robusto para Gemini Nano (Chrome AI)
+     * Verifica múltiplos namespaces e normaliza para window.ai.languageModel
+     */
+    _detectAI() {
+        // Se já estiver normalizado, retorna
+        if (window.ai?.languageModel) return window.ai.languageModel;
 
-        const modelAPI = ai ? (ai.languageModel || ai.assistant) : null;
+        const possibilities = [
+            { name: 'window.ai.languageModel', get: () => window.ai?.languageModel },
+            { name: 'window.ai.assistant', get: () => window.ai?.assistant },
+            { name: 'window.model', get: () => window.model },
+            { name: 'self.LanguageModel', get: () => self.LanguageModel },
+            { name: 'navigator.ai.languageModel', get: () => navigator.ai?.languageModel },
+            { name: 'window.chrome.ai.languageModel', get: () => window.chrome?.ai?.languageModel }
+        ];
+
+        for (const { name, get } of possibilities) {
+            try {
+                const obj = get();
+                if (obj) {
+                    console.log(`[AIService] API encontrada em ${name}`);
+                    
+                    // Fallback de Namespace: Garante que o objeto window.ai exista
+                    if (typeof window.ai === 'undefined') {
+                        window.ai = {};
+                    }
+                    
+                    // Normalização: Mapeia para window.ai.languageModel
+                    window.ai.languageModel = obj;
+                    return obj;
+                }
+            } catch (e) {
+                // Silenciosamente ignora erros de acesso a namespaces inexistentes
+            }
+        }
+
+        return null;
+    }
+
+    async checkRequirements() {
+        const modelAPI = this._detectAI();
 
         if (!modelAPI) {
-            console.warn("⚠️ IA Nativa (Gemini Nano) não detectada. O aplicativo seguirá, mas as avaliações de respostas falharão.");
-            // Retorna null para errors para NÃO BLOQUEAR a tela inicial
+            console.warn("⚠️ IA Nativa (Gemini Nano) não detectada em nenhum namespace conhecido. O aplicativo seguirá, mas as avaliações de respostas falharão.");
             return { errors: null, availability: 'no' };
         }
 
         try {
-            const availability = await modelAPI.availability();
+            // Parâmetros de Ativação: 'expectedOutputLanguage' essencial para certas versões
+            const availability = await modelAPI.availability({ expectedOutputLanguage: 'en' });
             return { errors: null, availability };
         } catch (e) {
+            console.error("[AIService] Erro ao verificar disponibilidade:", e);
+            // Fallback otimista se a chamada falhar mas a API existir
             return { errors: null, availability: 'readily' };
         }
     }
@@ -29,18 +65,17 @@ export class AIService {
     async getModel() {
         if (this.session) return this.session;
         
-        let ai = null;
-        try { ai = window.ai; } catch(e) {}
-        if (!ai) { try { ai = self.ai; } catch(e) {} }
-        if (!ai) { try { ai = navigator.ai; } catch(e) {} }
+        const modelAPI = this._detectAI();
+        if (!modelAPI) throw new Error("Gemini Nano API not found in any supported namespace");
         
-        if (!ai) throw new Error("AI API not found on window, self or navigator");
-        
-        const modelAPI = ai.languageModel || ai.assistant;
-        if (!modelAPI) throw new Error("languageModel or assistant API not found");
-        
-        this.session = await modelAPI.create();
-        return this.session;
+        try {
+            // Parâmetros de Ativação: { expectedOutputLanguage: 'en' } para "despertar" a API
+            this.session = await modelAPI.create({ expectedOutputLanguage: 'en' });
+            return this.session;
+        } catch (e) {
+            console.error("[AIService] Erro ao criar sessão do modelo:", e);
+            throw e;
+        }
     }
 
     async evaluateAnswer(questionText, expectedKeyPoints, candidateAnswer, locale = 'pt-BR') {
