@@ -16,26 +16,35 @@ export class TestRunner {
   }
 
   async run() {
-    const output = document.getElementById('test-output');
-    output.innerHTML = ''; // Clear previous results
+    console.log('\n🚀 Iniciando testes...');
+    const output = typeof document !== 'undefined' ? document.getElementById('test-output') : null;
+    if (output) output.innerHTML = ''; 
 
     for (const { name, fn } of this.tests) {
       try {
         await fn();
         console.log(`✅ ${name}`);
-        this.logToUI(`✅ ${name}`, 'pass');
+        if (output) this.logToUI(`✅ ${name}`, 'pass');
         this.passed++;
       } catch (error) {
-        console.error(`❌ ${name}`, error);
-        this.logToUI(`❌ ${name}: ${error.message}`, 'fail');
+        console.error(`❌ ${name}`);
+        console.error(`   👉 ${error.message}`);
+        if (output) this.logToUI(`❌ ${name}: ${error.message}`, 'fail');
         this.failed++;
       }
     }
 
-    this.logToUI(`\n🏁 Result: ${this.passed} passed, ${this.failed} failed.`, this.failed === 0 ? 'pass' : 'fail');
+    const resultMsg = `\n🏁 Resultado: ${this.passed} passaram, ${this.failed} falharam.`;
+    console.log(resultMsg);
+    if (output) this.logToUI(resultMsg, this.failed === 0 ? 'pass' : 'fail');
+    
+    if (this.failed > 0 && typeof process !== 'undefined') {
+      process.exit(1);
+    }
   }
 
   logToUI(message, type) {
+    if (typeof document === 'undefined') return;
     const output = document.getElementById('test-output');
     const div = document.createElement('div');
     div.textContent = message;

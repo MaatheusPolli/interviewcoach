@@ -2,7 +2,7 @@
 
 ![Status](https://img.shields.io/badge/Status-Beta-orange)
 ![Licença](https://img.shields.io/badge/Licença-MIT-green)
-![Versão](https://img.shields.io/badge/Versão-1.0.0-blue)
+![Versão](https://img.shields.io/badge/Versão-1.1.0-blue)
 ![Chrome AI](https://img.shields.io/badge/IA-Gemini%20Nano-blueviolet)
 
 O **InterviewCoach** é uma ferramenta de preparação para processos seletivos técnicos que funciona de forma **100% offline**. Utilizando a tecnologia **Gemini Nano** integrada diretamente ao Google Chrome, o simulador avalia suas respostas em tempo real, fornecendo feedback estruturado sobre precisão técnica, clareza e profundidade, sem que seus dados saiam do seu computador.
@@ -18,17 +18,15 @@ O **InterviewCoach** é uma ferramenta de preparação para processos seletivos 
 
 ## 🚀 Funcionalidades Atuais
 - **5 Trilhas de Conhecimento:** Frontend, Backend, Dados, Mobile e DevOps.
+- **Tradução Automática via IA:** As perguntas são traduzidas em tempo real para o idioma selecionado (PT/EN/ES) usando o Gemini Nano.
+- **Áudio Sob Demanda:** Controle total sobre o som. Ouça a pergunta apenas quando quiser clicando no botão de play.
 - **Avaliação Multidimensional:** Gráfico de radar comparando Precisão, Profundidade, Clareza, Exemplos e Boas Práticas.
-- **Entrada Híbrida:** Responda digitando ou falando (PT-BR).
-- **Leitura de Perguntas (TTS):** A IA lê a pergunta em Inglês para treinar seu listening.
+- **Entrada Híbrida:** Responda digitando ou falando.
+- **Resiliência Extrema:** Lógica de **Retry** e **Fallback** inteligente para garantir que a IA sempre entregue um feedback, mesmo em caso de falhas de rede ou parsing.
 - **Histórico Persistente:** Seus resultados são salvos localmente via IndexedDB.
-- **Resiliência com IA:** Sistema de retry automático (2 tentativas) e fallback para garantir fluidez.
-- **Mute Automático:** O microfone é pausado automaticamente enquanto a IA lê a pergunta, evitando eco.
-- **Feedback de Download:** Barra de progresso real enquanto o modelo Gemini Nano (~1.5GB) é baixado.
+- **Navegação SPA Fluida:** Interface sem reloads de página, garantindo rapidez e preservação de estado.
 - **Modo Escuro (Dark Mode):** Suporte nativo a tema escuro com persistência de preferência.
-- **Exportação JSON:** Baixe os resultados detalhados da sua sessão para estudo offline.
 - **Customização por JD:** Cole a descrição da vaga e a IA selecionará as perguntas mais relevantes para aquele cargo.
-- **Modo Deep Dive (Follow-up):** A IA faz perguntas de acompanhamento baseadas nas suas respostas para testar sua profundidade técnica.
 - **PWA (Instalável):** O app pode ser instalado e funciona offline após o primeiro acesso.
 
 ---

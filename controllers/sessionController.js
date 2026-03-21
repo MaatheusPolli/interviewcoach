@@ -27,7 +27,16 @@ export class SessionController {
       const response = await fetch(`data/questions-${config.track}.json`);
       const allQuestions = await response.json();
       
+      // Tenta filtrar pelo nível exato
       let filtered = allQuestions.filter(q => q.level === config.level);
+      
+      // Fallback Sênior: Se não houver perguntas suficientes (ex: 5), inclui outros níveis
+      const targetCount = config.mode === 'full' ? 10 : 5;
+      if (filtered.length < targetCount) {
+        console.warn(`[Session] Poucas perguntas para o nível ${config.level}. Incluindo outros níveis.`);
+        const others = allQuestions.filter(q => q.level !== config.level);
+        filtered = [...filtered, ...others];
+      }
       
       if (config.jd) {
         const skills = await this.services.ai.extractSkillsFromJD(config.jd, config.language);
@@ -71,10 +80,10 @@ export class SessionController {
     }
   }
 
-  startInterview() {
+  async startInterview() {
     this.views.interview.show(this.session.questions.length);
     this.views.interview.toggleAudio(this.isAudioEnabled);
-    this.nextQuestion();
+    await this.nextQuestion();
     if (!this.listenersSet) {
       this.setupListeners();
       this.listenersSet = true;
@@ -83,12 +92,40 @@ export class SessionController {
 
   setupListeners() {
     this.views.interview.onMicClick(() => this.handleMicToggle());
+    this.views.interview.onPlayQuestion(() => this.handlePlayQuestion());
     this.views.interview.onSubmit(() => this.handleSubmitAnswer());
     this.views.interview.onAudioToggle(() => this.handleAudioToggle());
     this.views.feedback.onNext(() => this.handleNextStep());
     this.views.dashboard.onRestart(() => this.init(this.session.config));
     this.views.dashboard.onExport(() => this.handleExport());
-    this.views.dashboard.onHome(() => window.location.reload());
+    this.views.dashboard.onHome(() => this.resetToHome());
+  }
+
+  handlePlayQuestion() {
+    if (!this.isAudioEnabled) return; // Respeita o Master Toggle
+    
+    const question = this.session.questions[this.session.currentIndex];
+    this.services.voice.speak(
+      question.translatedQuestion || question.question, 
+      this.session.config.language
+    );
+  }
+
+  resetToHome() {
+    this.stopTimer();
+    this.services.voice.cancel();
+    // Hide all screens and show home
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    document.getElementById('home-screen').classList.remove('hidden');
+    
+    // Reset session state
+    this.session = {
+      questions: [],
+      currentIndex: 0,
+      results: [],
+      config: null
+    };
+    this.isFollowUp = false;
   }
 
   handleAudioToggle() {
@@ -105,30 +142,23 @@ export class SessionController {
     this.services.storage.exportData(this.lastSessionData, filename);
   }
 
-  nextQuestion() {
+  async nextQuestion() {
     const question = this.session.questions[this.session.currentIndex];
     this.views.interview.updateCounter(this.session.currentIndex + 1, this.session.questions.length);
-    this.views.interview.setQuestion(question.question);
     
-    if (this.isAudioEnabled) {
-      this.services.voice.speak(
-        question.question, 
-        this.session.config.language,
-        () => {
-          if (this.isListening) {
-            this.services.voice.stopListening();
-            this.views.interview.toggleMic(false);
-            this.wasListeningBeforeSpeak = true;
-          }
-        },
-        () => {
-          if (this.wasListeningBeforeSpeak) {
-            this.handleMicToggle();
-            this.wasListeningBeforeSpeak = false;
-          }
-        }
-      );
-    }
+    // Mostra um estado de carregamento enquanto traduz
+    this.views.interview.setQuestion("Traduzindo pergunta...");
+
+    // Traduz a pergunta se necessário
+    const displayQuestion = await this.services.ai.translateText(
+      question.question, 
+      this.session.config.language
+    );
+    
+    this.views.interview.setQuestion(displayQuestion);
+    
+    // Armazena a versão traduzida para o áudio sob demanda
+    question.translatedQuestion = displayQuestion;
 
     this.stopTimer();
     if (this.session.config.mode === 'full') {
@@ -236,11 +266,11 @@ export class SessionController {
     }
   }
 
-  handleNextStep() {
+  async handleNextStep() {
     if (this.session.currentIndex < this.session.questions.length - 1) {
       this.session.currentIndex++;
       this.views.interview.show(this.session.questions.length);
-      this.nextQuestion();
+      await this.nextQuestion();
     } else {
       this.finishInterview();
     }

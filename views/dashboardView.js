@@ -47,14 +47,17 @@ export class DashboardView {
 
     // Draw background circles
     ctx.strokeStyle = '#e2e8f0';
+    ctx.setLineDash([5, 5]); // Dashed lines for a more modern look
     for (let i = 1; i <= 5; i++) {
       ctx.beginPath();
       ctx.arc(centerX, centerY, (radius / 5) * i, 0, Math.PI * 2);
       ctx.stroke();
     }
+    ctx.setLineDash([]); // Reset dash
 
     // Draw axes
     ctx.beginPath();
+    ctx.strokeStyle = '#cbd5e1';
     for (let i = 0; i < labels.length; i++) {
       const x = centerX + Math.cos(i * angleStep - Math.PI / 2) * radius;
       const y = centerY + Math.sin(i * angleStep - Math.PI / 2) * radius;
@@ -63,26 +66,38 @@ export class DashboardView {
       
       // Labels
       ctx.fillStyle = '#64748b';
-      ctx.font = '12px Segoe UI';
-      const labelX = centerX + Math.cos(i * angleStep - Math.PI / 2) * (radius + 20);
-      const labelY = centerY + Math.sin(i * angleStep - Math.PI / 2) * (radius + 20);
+      ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+      const labelX = centerX + Math.cos(i * angleStep - Math.PI / 2) * (radius + 25);
+      const labelY = centerY + Math.sin(i * angleStep - Math.PI / 2) * (radius + 25);
       ctx.textAlign = 'center';
-      ctx.fillText(labels[i], labelX, labelY);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(labels[i].toUpperCase(), labelX, labelY);
     }
     ctx.stroke();
 
     // Draw data polygon
     ctx.beginPath();
-    ctx.fillStyle = 'rgba(37, 99, 235, 0.4)';
-    ctx.strokeStyle = '#2563eb';
-    ctx.lineWidth = 2;
+    const primaryColor = '#2563eb';
+    const primaryAlpha = 'rgba(37, 99, 235, 0.2)';
+    ctx.fillStyle = primaryAlpha;
+    ctx.strokeStyle = primaryColor;
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
 
     for (let i = 0; i < labels.length; i++) {
-      const val = data[i] / 10; // Normalize 0-10 to 0-1
+      const val = Math.max(0.1, data[i] / 10); // Minimum visibility
       const x = centerX + Math.cos(i * angleStep - Math.PI / 2) * radius * val;
       const y = centerY + Math.sin(i * angleStep - Math.PI / 2) * radius * val;
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
+
+      // Data points
+      ctx.save();
+      ctx.fillStyle = primaryColor;
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
     ctx.closePath();
     ctx.fill();

@@ -78,7 +78,7 @@ export class AIService {
         }
     }
 
-    async evaluateAnswer(questionText, expectedKeyPoints, candidateAnswer, locale = 'pt-BR') {
+    async evaluateAnswer(questionText, expectedKeyPoints, candidateAnswer, locale = 'pt-BR', retries = 1) {
         try {
             const session = await this.getModel();
             const langName = locale.startsWith('en') ? "English" : locale.startsWith('es') ? "Spanish" : "Portuguese";
@@ -102,13 +102,40 @@ Expected Points: ${expectedKeyPoints.join(', ')}
 Candidate Answer: ${candidateAnswer}
 `;
             const response = await session.prompt(prompt);
-            const start = response.indexOf('{');
-            const end = response.lastIndexOf('}') + 1;
-            if (start === -1) throw new Error("Invalid AI response: No JSON found");
-            return JSON.parse(response.substring(start, end).trim());
+            const parsed = this._safeParseJSON(response, null);
+            
+            if (!parsed && retries > 0) {
+                console.log(`[AIService] Falha no parsing. Tentando novamente... (${retries} restante)`);
+                return await this.evaluateAnswer(questionText, expectedKeyPoints, candidateAnswer, locale, retries - 1);
+            }
+
+            return parsed || {
+                totalScore: 5,
+                scores: { accuracy: 5, depth: 5, clarity: 5, examples: 5, bestPractices: 5 },
+                strengths: ["Avaliação automática falhou"],
+                missing: ["Não foi possível extrair pontos específicos"],
+                improvement: "Tente reenviar sua resposta ou simplificar o texto.",
+                modelAnswer: "O sistema de IA encontrou um erro ao processar esta resposta específica."
+            };
         } catch (e) {
+            if (retries > 0) {
+                return await this.evaluateAnswer(questionText, expectedKeyPoints, candidateAnswer, locale, retries - 1);
+            }
             console.error('AI Error:', e);
             throw e;
+        }
+    }
+
+    _safeParseJSON(text, fallback) {
+        try {
+            const start = text.indexOf('{');
+            const end = text.lastIndexOf('}') + 1;
+            if (start === -1 || end <= start) return fallback;
+            const jsonStr = text.substring(start, end).trim();
+            return JSON.parse(jsonStr);
+        } catch (e) {
+            console.error("[AIService] Erro de Parsing JSON:", e, "Texto original:", text);
+            return fallback;
         }
     }
 
@@ -135,6 +162,20 @@ Candidate Answer: ${candidateAnswer}
             return await session.prompt(prompt);
         } catch (e) {
             return null;
+        }
+    }
+
+    async translateText(text, targetLocale) {
+        if (targetLocale.startsWith('en')) return text; // Já está em inglês
+        
+        try {
+            const session = await this.getModel();
+            const langName = targetLocale.startsWith('pt') ? "Portuguese (Brazil)" : targetLocale.startsWith('es') ? "Spanish" : "Portuguese";
+            const prompt = `Translate this technical interview question to ${langName}. Maintain the technical terms if they are commonly used in the industry. Output ONLY the translated text: ${text}`;
+            return await session.prompt(prompt);
+        } catch (e) {
+            console.error("Translation error:", e);
+            return text; // Fallback para o original
         }
     }
 }

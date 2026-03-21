@@ -23,19 +23,19 @@
                     <div class="form-group">
                         <label>Trilha</label>
                         <select id="track-select">
-                            <option value="frontend">Engenharia Frontend</option>
-                            <option value="backend">Engenharia Backend</option>
-                            <option value="data">Engenharia de Dados</option>
-                            <option value="mobile">Desenvolvimento Mobile</option>
-                            <option value="devops">DevOps & Cloud</option>
+                            <option value="frontend">🎨 Engenharia Frontend</option>
+                            <option value="backend">⚙️ Engenharia Backend</option>
+                            <option value="data">📊 Engenharia de Dados</option>
+                            <option value="mobile">📱 Desenvolvimento Mobile</option>
+                            <option value="devops">☁️ DevOps & Cloud</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Nível de Senioridade</label>
                         <select id="level-select">
-                            <option value="junior">Júnior</option>
-                            <option value="mid">Pleno</option>
-                            <option value="senior">Sênior</option>
+                            <option value="junior">🌱 Júnior</option>
+                            <option value="mid">🌿 Pleno</option>
+                            <option value="senior">🌳 Sênior</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -73,8 +73,14 @@
                         <span id="timer" class="hidden">02:00</span>
                     </div>
                 </div>
+                <div class="progress-bar-bg">
+                    <div id="interview-progress-fill" class="progress-bar-fill" style="width: 20%;"></div>
+                </div>
                 <div class="card">
-                    <h2 id="question-text">Carregando pergunta...</h2>
+                    <div class="question-header">
+                        <h2 id="question-text">Carregando pergunta...</h2>
+                        <button id="play-question-btn" class="icon-btn" title="Ouvir Pergunta">🔊</button>
+                    </div>
                     <div class="input-area">
                         <textarea id="answer-input" placeholder="Digite sua resposta aqui ou use o microfone..."></textarea>
                         <div class="voice-controls">

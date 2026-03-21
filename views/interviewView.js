@@ -10,7 +10,9 @@ export class InterviewView {
       micStatus: document.querySelector('.mic-status'),
       interimTranscript: document.getElementById('interim-transcript'),
       submitBtn: document.getElementById('submit-answer-btn'),
-      audioToggleBtn: document.getElementById('audio-toggle-btn')
+      audioToggleBtn: document.getElementById('audio-toggle-btn'),
+      playQuestionBtn: document.getElementById('play-question-btn'),
+      progressFill: document.getElementById('interview-progress-fill')
     };
   }
 
@@ -24,9 +26,13 @@ export class InterviewView {
     if (isEnabled) {
       this.elements.audioToggleBtn.classList.remove('muted');
       this.elements.audioToggleBtn.textContent = '🔊';
+      this.elements.playQuestionBtn.style.opacity = '1';
+      this.elements.playQuestionBtn.style.cursor = 'pointer';
     } else {
       this.elements.audioToggleBtn.classList.add('muted');
       this.elements.audioToggleBtn.textContent = '🔇';
+      this.elements.playQuestionBtn.style.opacity = '0.3';
+      this.elements.playQuestionBtn.style.cursor = 'not-allowed';
     }
   }
 
@@ -34,8 +40,16 @@ export class InterviewView {
     this.elements.audioToggleBtn.addEventListener('click', callback);
   }
 
+  onPlayQuestion(callback) {
+    this.elements.playQuestionBtn.addEventListener('click', callback);
+  }
+
   updateCounter(current, total) {
     this.elements.counter.textContent = `Pergunta ${current}/${total}`;
+    const progress = (current / total) * 100;
+    if (this.elements.progressFill) {
+      this.elements.progressFill.style.width = `${progress}%`;
+    }
   }
 
   toggleTimer(isVisible) {

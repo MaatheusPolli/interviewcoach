@@ -41,5 +41,57 @@
       "Reducing state updates or lifting state down"
     ],
     "followUp": "How would you handle a performance issue caused by a 3rd-party library?"
+  },
+  {
+    "id": "fe-004",
+    "track": "frontend",
+    "level": "junior",
+    "topic": "CSS",
+    "question": "Explain the CSS Box Model.",
+    "expectedKeyPoints": [
+      "Content, Padding, Border, Margin",
+      "box-sizing: border-box vs content-box",
+      "How width and height are calculated",
+      "Impact of padding and borders on total size"
+    ]
+  },
+  {
+    "id": "fe-005",
+    "track": "frontend",
+    "level": "junior",
+    "topic": "JavaScript",
+    "question": "What is the difference between 'let', 'const', and 'var'?",
+    "expectedKeyPoints": [
+      "Block scope vs Function scope",
+      "Hoisting behavior",
+      "Reassignment capabilities",
+      "Temporal Dead Zone"
+    ]
+  },
+  {
+    "id": "fe-006",
+    "track": "frontend",
+    "level": "junior",
+    "topic": "JavaScript",
+    "question": "What are Arrow Functions and how do they differ from regular functions?",
+    "expectedKeyPoints": [
+      "Shorter syntax",
+      "Lexical 'this' binding",
+      "No 'arguments' object",
+      "Cannot be used as constructors"
+    ]
+  },
+  {
+    "id": "fe-007",
+    "track": "frontend",
+    "level": "junior",
+    "topic": "React",
+    "question": "What is the Virtual DOM and how does React use it?",
+    "expectedKeyPoints": [
+      "Lightweight copy of the real DOM",
+      "Reconciliation process",
+      "Diffing algorithm",
+      "Batching updates for performance"
+    ]
   }
 ]
