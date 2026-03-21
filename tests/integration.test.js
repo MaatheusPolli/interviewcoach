@@ -12,7 +12,22 @@ import {
   MockDashboardView 
 } from './mocks.js';
 
-// --- CONFIGURAÇÃO DE AMBIENTE ---
+// --- CONFIGURAÇÃO DE AMBIENTE GLOBAL (MOCKS) ---
+global.window = { 
+  speechSynthesis: { speak: () => {}, cancel: () => {} },
+  location: { reload: () => {} },
+  alert: () => {},
+  fetch: async () => ({ json: async () => [] })
+};
+global.document = { 
+  querySelectorAll: () => [],
+  getElementById: () => ({ 
+    classList: { add: () => {}, remove: () => {} },
+    innerHTML: ''
+  }),
+  createElement: () => ({ textContent: '', className: '' })
+};
+
 const scoring = new ScoringService();
 const ai = new AIService();
 const voice = new VoiceService();
@@ -20,14 +35,14 @@ const voice = new VoiceService();
 runner.group('Módulo: ScoringService (Cálculos de Pontuação)', () => {
 
   runner.test('Caminho Feliz: Calcula média correta das dimensões e total', () => {
-    // Valida se o serviço soma e divide corretamente as 5 dimensões da IA
+    // Valida se o serviço soma e divide corretamente as 5 dimensões da IA (Escala 0-10)
     const resultados = [
-      { totalScore: 80, scores: { accuracy: 8, depth: 7, clarity: 9, examples: 8, bestPractices: 8 }, topic: 'JS' },
-      { totalScore: 60, scores: { accuracy: 6, depth: 5, clarity: 7, examples: 6, bestPractices: 6 }, topic: 'JS' }
+      { totalScore: 8, scores: { accuracy: 8, depth: 7, clarity: 9, examples: 8, bestPractices: 8 }, topic: 'JS' },
+      { totalScore: 6, scores: { accuracy: 6, depth: 5, clarity: 7, examples: 6, bestPractices: 6 }, topic: 'JS' }
     ];
     const final = scoring.calculateSessionScore(resultados);
     
-    runner.expect(final.overall).toBe(70);
+    runner.expect(final.overall).toBe(7);
     runner.expect(final.dimensionAverages.accuracy).toBe(7);
     runner.expect(final.dimensionAverages.depth).toBe(6);
   });
@@ -49,51 +64,48 @@ runner.group('Módulo: ScoringService (Cálculos de Pontuação)', () => {
 
 runner.group('Módulo: AIService (Resiliência e Parser)', () => {
 
-  runner.test('Resiliência: Aciona Fallback após 2 falhas de JSON', async () => {
-    // Simula o Gemini Nano retornando texto lixo em vez de JSON
+  runner.test('Resiliência: Aciona Fallback após falha persistente de JSON', async () => {
     const mockSession = {
       prompt: async () => "Texto inválido que não é JSON"
     };
-    // Injetamos um mock parcial para teste de unidade
     const aiService = new AIService();
     aiService.session = mockSession;
     
-    const res = await aiService.evaluateAnswer("Q", ["P"], "A");
+    // Com retries = 0 para teste rápido
+    const res = await aiService.evaluateAnswer("Q", ["P"], "A", "pt-BR", 0);
     
-    // Deve retornar o objeto de fallback 50/100 definido no requisito
-    runner.expect(res.totalScore).toBe(50);
-    runner.expect(res.strengths[0]).toBe("Resposta processada parcialmente");
+    // Deve retornar o objeto de fallback definido
+    runner.expect(res.totalScore).toBe(5);
+    runner.expect(res.strengths[0]).toBe("Avaliação automática falhou");
   });
 
-  runner.test('Parser: Limpa backticks de Markdown do JSON', async () => {
-    // A IA as vezes retorna ```json { ... } ```. O parser deve limpar isso.
-    const jsonSujo = "```json\n{\"totalScore\": 90, \"scores\": {}, \"strengths\": [], \"missing\": [], \"improvement\": \"\", \"modelAnswer\": \"\"}\n```";
+  runner.test('Parser: Limpa texto extra ao redor do JSON', async () => {
+    const jsonSujo = "Aqui está o resultado: {\"totalScore\": 9, \"scores\": {}, \"strengths\": [], \"missing\": [], \"improvement\": \"\", \"modelAnswer\": \"\"} Espero que ajude!";
     const mockSession = { prompt: async () => jsonSujo };
     
     const aiService = new AIService();
     aiService.session = mockSession;
     const res = await aiService.evaluateAnswer("Q", [], "A");
     
-    runner.expect(res.totalScore).toBe(90);
+    runner.expect(res.totalScore).toBe(9);
   });
 
-  runner.test('Parser: Lida com JSON truncado disparando Retry', async () => {
-    // Simula uma resposta cortada que deve falhar no JSON.parse e disparar retry
+  runner.test('Parser: Dispara Retry em caso de JSON inválido', async () => {
     let callCount = 0;
     const mockSession = {
       prompt: async () => {
         callCount++;
-        if (callCount === 1) return '{"totalScore": 90, "scores": {'; // Truncado
-        return '{"totalScore": 85, "scores": {}, "strengths": [], "missing": [], "improvement": "", "modelAnswer": ""}';
+        if (callCount === 1) return '{"totalScore": 9, "scores": {'; // JSON inválido
+        return '{"totalScore": 8, "scores": {}, "strengths": [], "missing": [], "improvement": "", "modelAnswer": ""}';
       }
     };
     
     const aiService = new AIService();
     aiService.session = mockSession;
-    const res = await aiService.evaluateAnswer("Q", [], "A");
+    const res = await aiService.evaluateAnswer("Q", [], "A", "pt-BR", 1);
     
     runner.expect(callCount).toBe(2);
-    runner.expect(res.totalScore).toBe(85);
+    runner.expect(res.totalScore).toBe(8);
   });
 });
 
@@ -175,3 +187,6 @@ runner.group('Integração: SessionController (Fluxo Completo)', () => {
     runner.expect(alertCalled).toBe(true);
   });
 });
+
+// Execução Final
+runner.run();

@@ -4,14 +4,14 @@ Este documento define os próximos passos para o **InterviewCoach**, focando em 
 
 ---
 
-## 🌅 Horizonte 1 — Quick Wins (Curto Prazo)
+## 🌅 Horizonte 1 — Quick Wins (Próximos Passos)
 *Foco: Refinamento de UX e Engajamento Imediato.*
 
 | Título | Impacto | Esforço | Detalhes |
 | :--- | :--- | :---: | :--- |
-| **Suporte Multilíngue (PT/EN/ES)** | Alto | P | Padronizar prompts e interface para suporte nativo a múltiplos idiomas além do Inglês/Português. |
 | **Gamificação (Ready Score)** | Médio | P | Criar um sistema de pontuação acumulada e badges locais (ex: "Especialista em Backend") para incentivar a constância. |
 | **Dicas em Tempo Real (Hinter)** | Alto | M | Se o usuário ficar em silêncio por > 5s, a IA sugere palavras-chave ou tópicos para destravar a resposta. |
+| **Filtros Avançados** | Baixo | P | Permitir filtrar perguntas por tópicos específicos dentro de uma trilha (ex: apenas 'React' em Frontend). |
 
 ---
 
@@ -36,7 +36,9 @@ Este documento define os próximos passos para o **InterviewCoach**, focando em 
 
 ---
 
-## 📈 Métricas de Sucesso (Próximas Metas)
-- **Acessibilidade:** Rodar em navegadores mobile (via WebGPU).
-- **Consistência:** Usuários atingindo o "Ready Score" de 80% em suas trilhas principais.
-- **Globalização:** Suporte pleno a 3 idiomas sem vazamento de contexto (Prompt Engineering).
+## ✅ Itens Concluídos (v1.1.0)
+- [x] **Tradução Automática via IA:** Suporte dinâmico para PT/EN/ES.
+- [x] **Áudio Sob Demanda:** Controle do usuário sobre a reprodução de voz.
+- [x] **Resiliência e Fallback:** Lógica de retry para falhas de parsing da IA.
+- [x] **Navegação SPA:** Refatoração do ciclo de vida da sessão sem recarregamento de página.
+- [x] **Enriquecimento de Dados:** Expansão do banco de perguntas inicial.
