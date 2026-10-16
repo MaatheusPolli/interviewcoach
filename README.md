@@ -1,7 +1,7 @@
 # 🗣️ InterviewCoach — Simulador de Entrevista Técnica com IA Nativa
 
 ![Status](https://img.shields.io/badge/Status-Beta-orange)
-![Licença](https://img.shields.io/badge/Licença-MIT-green)
+![Licença](https://img.shields.io/badge/Licença-MIT%20pessoal%20%2B%20comercial-green)
 ![Versão](https://img.shields.io/badge/Versão-1.1.0-blue)
 ![Chrome AI](https://img.shields.io/badge/IA-Gemini%20Nano-blueviolet)
 
@@ -40,8 +40,10 @@ O **InterviewCoach** é uma ferramenta de preparação para processos seletivos 
 ├── services/           # Serviços de IA, Voz, Armazenamento e Scoring
 ├── views/              # Gerenciamento de DOM e Telas
 ├── data/               # Banco de perguntas (JSON)
-├── tests/              # Testes de Integração e Mocks
-└── SKILL.md            # Registro de competências e progresso
+├── tests/              # Testes de integração, do sessionController e mocks
+├── manifest.json       # Manifesto do PWA
+├── sw.js               # Service Worker (cache offline)
+└── roadmap.md          # Ideias de evolução
 ```
 
 ## 📋 Pré-requisitos Técnicos
@@ -65,7 +67,7 @@ Acesse `chrome://components` e verifique se o **Optimization Guide On Device Mod
 
 ### Passo 1: Clonar e Instalar
 ```bash
-git clone https://github.com/seu-usuario/interviewcoach.git
+git clone https://github.com/MaatheusPolli/interviewcoach.git
 cd interviewcoach
 npm install
 ```
@@ -99,20 +101,36 @@ Acesse: `http://localhost:8080`
 Este projeto **não utiliza `.env` clássico** por ser client-side. A configuração é feita via:
 - **Flags do Chrome:** Define a disponibilidade da IA.
 - **data/*.json:** Onde você pode adicionar ou editar perguntas.
-- **VoiceService.js:** Ajuste `sttLanguage` (reconhecimento) ou `ttsLanguage` (fala) conforme necessário.
+- **services/voiceService.js:** o idioma de reconhecimento (STT) e de fala (TTS) segue o `locale` da sessão (PT/EN/ES).
 
 ---
 
-## 🤝 Contribuição e Licença
+## 🧪 Testes
 
-Contribuições são bem-vindas! Siga os passos:
-1. Crie um Fork do projeto.
+```bash
+npm test        # c8 + tests/integration.test.js
+```
+
+## 🤝 Contribuição
+
+1. Crie um fork do projeto.
 2. Adicione novas perguntas em `data/questions-{trilha}.json`.
 3. Abra um Pull Request.
 
-Distribuído sob a licença **MIT**. Veja `LICENSE` para mais informações.
+## 🗺️ Planejamento
+
+- Ideias de evolução: [roadmap.md](roadmap.md)
 
 ---
 
 ## 🎓 Autor
 Desenvolvido por **Matheus Gasparotto Polli**.
+
+## Licença
+
+Este projeto usa **licença dupla**. O texto completo está em [LICENSE](LICENSE).
+
+- **Uso pessoal, educacional e não comercial:** livre, nos termos da licença MIT (mantenha o aviso de copyright).
+- **Uso comercial:** exige licença comercial. Isso inclui usar em produto ou serviço comercial, vender acesso ou derivados, usar em atividades com fins lucrativos e implantar em empresas.
+
+Contato para licença comercial: ma.polli@hotmail.com
