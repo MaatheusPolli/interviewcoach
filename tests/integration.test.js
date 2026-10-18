@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs';
 import { runner } from './test-runner.js';
 import { ScoringService } from '../services/scoringService.js';
 import { AIService } from '../services/aiService.js';
+import { validateFeedback } from '../services/feedbackSchema.js';
+import { escapeHtml } from '../utils/html.js';
+import { summarizeProgress } from '../services/gamificationService.js';
 import { VoiceService } from '../services/voiceService.js';
 import { SessionController } from '../controllers/sessionController.js';
 import { 
@@ -12,14 +16,27 @@ import {
   MockDashboardView 
 } from './mocks.js';
 
+// JSON de feedback completo e válido; `nota` controla totalScore
+const JSON_VALIDO = (nota) => JSON.stringify({
+  totalScore: nota,
+  scores: { accuracy: nota, depth: nota, clarity: nota, examples: nota, bestPractices: nota },
+  strengths: ['ponto forte'],
+  missing: ['ponto faltando'],
+  improvement: 'melhorar',
+  modelAnswer: 'resposta modelo'
+});
+
 // --- CONFIGURAÇÃO DE AMBIENTE GLOBAL (MOCKS) ---
 global.window = { 
-  speechSynthesis: { speak: () => {}, cancel: () => {} },
+  speechSynthesis: { speak: () => {}, cancel: () => {}, getVoices: () => [] },
   location: { reload: () => {} },
   alert: () => {},
   fetch: async () => ({ json: async () => [] })
 };
-global.document = { 
+global.SpeechSynthesisUtterance = class {
+  constructor(text) { this.text = text; }
+};
+global.document = {
   querySelectorAll: () => [],
   getElementById: () => ({ 
     classList: { add: () => {}, remove: () => {} },
@@ -80,7 +97,7 @@ runner.group('Módulo: AIService (Resiliência e Parser)', () => {
   });
 
   runner.test('Parser: Limpa texto extra ao redor do JSON', async () => {
-    const jsonSujo = "Aqui está o resultado: {\"totalScore\": 9, \"scores\": {}, \"strengths\": [], \"missing\": [], \"improvement\": \"\", \"modelAnswer\": \"\"} Espero que ajude!";
+    const jsonSujo = "Aqui está o resultado: " + JSON_VALIDO(9) + " Espero que ajude!";
     const mockSession = { prompt: async () => jsonSujo };
     
     const aiService = new AIService();
@@ -96,7 +113,7 @@ runner.group('Módulo: AIService (Resiliência e Parser)', () => {
       prompt: async () => {
         callCount++;
         if (callCount === 1) return '{"totalScore": 9, "scores": {'; // JSON inválido
-        return '{"totalScore": 8, "scores": {}, "strengths": [], "missing": [], "improvement": "", "modelAnswer": ""}';
+        return JSON_VALIDO(8);
       }
     };
     
@@ -111,35 +128,38 @@ runner.group('Módulo: AIService (Resiliência e Parser)', () => {
 
 runner.group('Módulo: VoiceService (Localização e Sync)', () => {
   
-  runner.test('Mute: Dispara callbacks de início e fim no Speak', (done) => {
+  runner.test('Mute: Dispara callbacks de início e fim no Speak', async () => {
     // Valida se o speak está chamando os hooks necessários para o mute automático
     const service = new VoiceService();
-    let startCalled = false;
-    
-    // Mock speechSynthesis
     const originalSpeak = window.speechSynthesis.speak;
+
+    // Mock speechSynthesis: dispara start e end imediatamente
     window.speechSynthesis.speak = (utterance) => {
         utterance.onstart();
         utterance.onend();
     };
 
-    service.speak("Hello", "en-US", 
-      () => { startCalled = true; },
-      () => { 
-        runner.expect(startCalled).toBe(true);
-        window.speechSynthesis.speak = originalSpeak;
-        done();
-      }
-    );
+    try {
+      const events = await new Promise((resolve) => {
+        const seen = [];
+        service.speak("Hello", "en-US",
+          () => seen.push('start'),
+          () => { seen.push('end'); resolve(seen); }
+        );
+      });
+      runner.expect(events).toEqual(['start', 'end']);
+    } finally {
+      window.speechSynthesis.speak = originalSpeak;
+    }
   });
 
-  runner.test('Localização: Alterna idioma de STT corretamente', () => {
-    // Valida o toggle entre PT-BR (padrão) e EN-US
+  runner.test('Localização: Troca idioma de STT corretamente', () => {
+    // Valida o padrão PT-BR e a troca para EN-US via setLanguage
     const service = new VoiceService();
-    runner.expect(service.sttLanguage).toBe('pt-BR');
-    
-    service.toggleLanguage();
-    runner.expect(service.sttLanguage).toBe('en-US');
+    runner.expect(service.locale).toBe('pt-BR');
+
+    service.setLanguage('en-US');
+    runner.expect(service.locale).toBe('en-US');
   });
 });
 
@@ -181,10 +201,185 @@ runner.group('Integração: SessionController (Fluxo Completo)', () => {
     window.fetch = async () => ({ json: async () => [] }); // Mock fetch vazio
     
     let alertCalled = false;
-    window.alert = () => { alertCalled = true; };
+    global.alert = () => { alertCalled = true; };
     
     await controller.init({ track: 'unknown', level: 'senior', mode: 'quick' });
     runner.expect(alertCalled).toBe(true);
+  });
+
+  runner.test('Filtro: Sessão usa apenas perguntas do tópico escolhido', async () => {
+    const { controller } = setup();
+    const banco = [
+      { id: 1, track: 'frontend', level: 'mid', topic: 'React', question: 'q1', expectedKeyPoints: [] },
+      { id: 2, track: 'frontend', level: 'mid', topic: 'CSS', question: 'q2', expectedKeyPoints: [] },
+      { id: 3, track: 'frontend', level: 'junior', topic: 'React', question: 'q3', expectedKeyPoints: [] }
+    ];
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async () => ({ json: async () => banco });
+    try {
+      await controller.init({ track: 'frontend', level: 'mid', mode: 'quick', topic: 'React' });
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+    runner.expect(controller.session.questions.length).toBe(2);
+    runner.expect(controller.session.questions.every(q => q.topic === 'React')).toBe(true);
+  });
+});
+
+runner.group('Módulo: Validação do feedback (feedbackSchema)', () => {
+
+  runner.test('Schema: Aceita feedback completo e válido', () => {
+    runner.expect(validateFeedback(JSON.parse(JSON_VALIDO(7))).valid).toBe(true);
+  });
+
+  runner.test('Schema: Reporta campo faltando', () => {
+    const { valid, errors } = validateFeedback({ totalScore: 5, scores: {} });
+    runner.expect(valid).toBe(false);
+    runner.expect(errors.some(e => e.includes('strengths'))).toBe(true);
+  });
+
+  runner.test('Schema: Rejeita nota fora de 0–10', () => {
+    const fb = JSON.parse(JSON_VALIDO(7));
+    fb.totalScore = 11;
+    runner.expect(validateFeedback(fb).valid).toBe(false);
+    fb.totalScore = 7;
+    fb.scores.depth = -1;
+    runner.expect(validateFeedback(fb).valid).toBe(false);
+  });
+
+  runner.test('Schema: Rejeita null e arrays no lugar do objeto', () => {
+    runner.expect(validateFeedback(null).valid).toBe(false);
+    runner.expect(validateFeedback([]).valid).toBe(false);
+  });
+});
+
+runner.group('Módulo: Escape de HTML (utils/html)', () => {
+
+  runner.test('Escape: Neutraliza tags e aspas', () => {
+    runner.expect(escapeHtml('<img src=x onerror="alert(1)">'))
+      .toBe('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;');
+  });
+
+  runner.test('Escape: Trata null/undefined como texto vazio', () => {
+    runner.expect(escapeHtml(null)).toBe('');
+    runner.expect(escapeHtml(undefined)).toBe('');
+  });
+});
+
+runner.group('Módulo: Disponibilidade do modelo (Prompt API)', () => {
+
+  const withModel = async (model, fn) => {
+    const previous = globalThis.LanguageModel;
+    globalThis.LanguageModel = model;
+    try { await fn(); } finally { globalThis.LanguageModel = previous; }
+  };
+
+  runner.test('Disponibilidade: Estado "available" fica pronto', async () => {
+    await withModel({ availability: async () => 'available', create: async () => ({}) }, async () => {
+      const res = await new AIService().checkRequirements();
+      runner.expect(res.availability).toBe('ready');
+      runner.expect(res.errors).toBe(null);
+    });
+  });
+
+  runner.test('Disponibilidade: Estado "downloadable" pede download', async () => {
+    await withModel({ availability: async () => 'downloadable', create: async () => ({}) }, async () => {
+      const res = await new AIService().checkRequirements();
+      runner.expect(res.availability).toBe('after-download');
+    });
+  });
+
+  runner.test('Disponibilidade: Estado "unavailable" gera erro', async () => {
+    await withModel({ availability: async () => 'unavailable', create: async () => ({}) }, async () => {
+      const res = await new AIService().checkRequirements();
+      runner.expect(res.availability).toBe('no');
+      runner.expect(res.errors.length > 0).toBe(true);
+    });
+  });
+
+  runner.test('Disponibilidade: Não cria objeto window.ai', async () => {
+    const hadAi = 'ai' in globalThis;
+    await withModel({ availability: async () => 'available', create: async () => ({}) }, async () => {
+      await new AIService().checkRequirements();
+    });
+    runner.expect('ai' in globalThis).toBe(hadAi);
+  });
+});
+
+runner.group('Módulo: Service Worker', () => {
+
+  runner.test('SW: Versão do cache acompanha package.json', () => {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+    runner.expect(sw.includes(`const CACHE_NAME = 'interviewcoach-v${pkg.version}';`)).toBe(true);
+  });
+});
+
+runner.group('Módulo: Gamificação (Ready Score e badges)', () => {
+
+  const sess = (track, overallScore) => ({ track, overallScore });
+
+  runner.test('Gamificação: Sem sessões retorna zero e nenhum badge', () => {
+    const p = summarizeProgress([]);
+    runner.expect(p.readyScore).toBe(0);
+    runner.expect(p.badges.length).toBe(0);
+  });
+
+  runner.test('Gamificação: Ready Score usa só as últimas 5 sessões', () => {
+    const history = [sess('backend', 10), sess('backend', 90), sess('backend', 90), sess('backend', 90), sess('backend', 90), sess('backend', 90)];
+    runner.expect(summarizeProgress(history).readyScore).toBe(90);
+  });
+
+  runner.test('Gamificação: Concede badge de especialista com 3 sessões e média 70+', () => {
+    const history = [sess('backend', 70), sess('backend', 75), sess('backend', 80), sess('frontend', 50)];
+    const ids = summarizeProgress(history).badges.map(b => b.id);
+    runner.expect(ids.includes('specialist-backend')).toBe(true);
+    runner.expect(ids.includes('specialist-frontend')).toBe(false);
+  });
+
+  runner.test('Gamificação: Badge "sharp" exige nota 80+ em uma sessão', () => {
+    const ids = summarizeProgress([sess('data', 79)]).badges.map(b => b.id);
+    runner.expect(ids.includes('sharp')).toBe(false);
+    const ids2 = summarizeProgress([sess('data', 80)]).badges.map(b => b.id);
+    runner.expect(ids2.includes('sharp')).toBe(true);
+  });
+});
+
+runner.group('Módulo: Dica em tempo real (Hinter)', () => {
+
+  const buildController = (hintText, answer = '') => {
+    const services = { ai: { getHint: async () => hintText }, voice: new MockVoiceService(), storage: new MockStorageService(), scoring: new ScoringService() };
+    const shown = [];
+    const views = {
+      interview: { getAnswer: () => answer, showHint: (t) => shown.push(t), clearHint: () => {} },
+      feedback: new MockFeedbackView(),
+      dashboard: new MockDashboardView()
+    };
+    const controller = new SessionController(services, views);
+    controller.session.questions = [{ question: 'Q?', expectedKeyPoints: ['A'] }];
+    controller.session.currentIndex = 0;
+    controller.session.config = { mode: 'quick', language: 'pt-BR' };
+    return { controller, shown };
+  };
+
+  runner.test('Hinter: Mostra a dica quando o usuário está em silêncio', async () => {
+    const { controller, shown } = buildController('Pense em closures');
+    await controller.showHint(controller.session.questions[0]);
+    runner.expect(shown.length).toBe(1);
+    runner.expect(shown[0]).toBe('Pense em closures');
+  });
+
+  runner.test('Hinter: Não mostra dica se o usuário já escreveu algo', async () => {
+    const { controller, shown } = buildController('Pense em closures', 'já respondi');
+    await controller.showHint(controller.session.questions[0]);
+    runner.expect(shown.length).toBe(0);
+  });
+
+  runner.test('Hinter: Não mostra dica no modo cronometrado', () => {
+    const { controller } = buildController('x');
+    controller.session.config.mode = 'full';
+    controller.startHinter(controller.session.questions[0]);
+    runner.expect(controller.hintTimer).toBe(null);
   });
 });
 

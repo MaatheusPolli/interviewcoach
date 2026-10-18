@@ -46,6 +46,7 @@ export class TestRunner {
   logToUI(message, type) {
     if (typeof document === 'undefined') return;
     const output = document.getElementById('test-output');
+    if (typeof output?.appendChild !== 'function') return;
     const div = document.createElement('div');
     div.textContent = message;
     div.className = type;

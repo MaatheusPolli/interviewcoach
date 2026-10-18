@@ -1,0 +1,6 @@
+# Planejamento local: nunca versionar
+planejamento.md
+node_modules/
+coverage/
+test-results/
+playwright-report/

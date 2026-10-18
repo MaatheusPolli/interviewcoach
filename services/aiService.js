@@ -1,73 +1,101 @@
+import { validateFeedback } from './feedbackSchema.js';
+
+// Availability values reported by the Prompt API over time.
+// Old names ('readily', 'no', 'after-download') are kept for older Chrome builds.
+const READY_STATES = ['available', 'readily'];
+const DOWNLOAD_STATES = ['downloadable', 'downloading', 'after-download'];
+
 export class AIService {
     constructor() {
         this.session = null;
     }
 
     /**
-     * Detector Universal e Robusto para Gemini Nano (Chrome AI)
-     * Verifica múltiplos namespaces e normaliza para window.ai.languageModel
+     * Locates the Prompt API (LanguageModel) without mutating globals.
+     * Returns the model factory or null.
      */
     _detectAI() {
-        // Se já estiver normalizado, retorna
-        if (window.ai?.languageModel) return window.ai.languageModel;
-
-        const possibilities = [
-            { name: 'window.ai.languageModel', get: () => window.ai?.languageModel },
-            { name: 'window.ai.assistant', get: () => window.ai?.assistant },
-            { name: 'window.model', get: () => window.model },
-            { name: 'self.LanguageModel', get: () => self.LanguageModel },
-            { name: 'navigator.ai.languageModel', get: () => navigator.ai?.languageModel },
-            { name: 'window.chrome.ai.languageModel', get: () => window.chrome?.ai?.languageModel }
+        const candidates = [
+            () => globalThis.LanguageModel,
+            () => globalThis.ai?.languageModel,
+            () => globalThis.chrome?.ai?.languageModel
         ];
 
-        for (const { name, get } of possibilities) {
+        for (const get of candidates) {
             try {
                 const obj = get();
-                if (obj) {
-                    console.log(`[AIService] API encontrada em ${name}`);
-                    
-                    // Fallback de Namespace: Garante que o objeto window.ai exista
-                    if (typeof window.ai === 'undefined') {
-                        window.ai = {};
-                    }
-                    
-                    // Normalização: Mapeia para window.ai.languageModel
-                    window.ai.languageModel = obj;
-                    return obj;
-                }
+                if (obj && typeof obj.create === 'function') return obj;
             } catch (e) {
-                // Silenciosamente ignora erros de acesso a namespaces inexistentes
+                // Namespace inexistente: tenta o próximo
             }
         }
-
         return null;
+    }
+
+    /**
+     * Maps the current availability to one of:
+     * 'ready' | 'after-download' | 'no'
+     */
+    _normalizeAvailability(state) {
+        if (READY_STATES.includes(state)) return 'ready';
+        if (DOWNLOAD_STATES.includes(state)) return 'after-download';
+        return 'no';
     }
 
     async checkRequirements() {
         const modelAPI = this._detectAI();
+        const unavailable = {
+            errors: ['O Gemini Nano não está disponível neste navegador. Use o Chrome estável com a Prompt API ativada.'],
+            availability: 'no'
+        };
 
         if (!modelAPI) {
-            console.warn("⚠️ IA Nativa (Gemini Nano) não detectada em nenhum namespace conhecido. O aplicativo seguirá, mas as avaliações de respostas falharão.");
-            return { errors: null, availability: 'no' };
+            console.warn("[AIService] Prompt API não encontrada.");
+            return unavailable;
         }
 
         try {
-            // Parâmetros de Ativação: 'expectedOutputLanguage' essencial para certas versões
-            const availability = await modelAPI.availability({ expectedOutputLanguage: 'en' });
+            const state = await modelAPI.availability({ expectedOutputLanguage: 'en' });
+            const availability = this._normalizeAvailability(state);
+            if (availability === 'no') return unavailable;
             return { errors: null, availability };
         } catch (e) {
             console.error("[AIService] Erro ao verificar disponibilidade:", e);
-            // Fallback otimista se a chamada falhar mas a API existir
-            return { errors: null, availability: 'readily' };
+            // Otimista: a API existe, então tentamos usá-la mesmo assim
+            return { errors: null, availability: 'ready' };
+        }
+    }
+
+    /**
+     * Downloads the on-device model, reporting progress from 0 to 100.
+     * @returns {Promise<boolean>} true when the model is ready.
+     */
+    async downloadModel(onProgress = () => {}) {
+        const modelAPI = this._detectAI();
+        if (!modelAPI) return false;
+
+        try {
+            this.session = await modelAPI.create({
+                expectedOutputLanguage: 'en',
+                monitor(m) {
+                    m.addEventListener('downloadprogress', (e) => {
+                        onProgress(Math.round((e.loaded ?? 0) * 100));
+                    });
+                }
+            });
+            return true;
+        } catch (e) {
+            console.error("[AIService] Erro ao baixar o modelo:", e);
+            return false;
         }
     }
 
     async getModel() {
         if (this.session) return this.session;
-        
+
         const modelAPI = this._detectAI();
-        if (!modelAPI) throw new Error("Gemini Nano API not found in any supported namespace");
-        
+        if (!modelAPI) throw new Error("Gemini Nano API not found");
+
         try {
             // Parâmetros de Ativação: { expectedOutputLanguage: 'en' } para "despertar" a API
             this.session = await modelAPI.create({ expectedOutputLanguage: 'en' });
@@ -103,13 +131,14 @@ Candidate Answer: ${candidateAnswer}
 `;
             const response = await session.prompt(prompt);
             const parsed = this._safeParseJSON(response, null);
-            
-            if (!parsed && retries > 0) {
-                console.log(`[AIService] Falha no parsing. Tentando novamente... (${retries} restante)`);
+            const { valid, errors } = validateFeedback(parsed);
+
+            if (!valid && retries > 0) {
+                console.log(`[AIService] Feedback inválido (${errors.join('; ')}). Tentando novamente... (${retries} restante)`);
                 return await this.evaluateAnswer(questionText, expectedKeyPoints, candidateAnswer, locale, retries - 1);
             }
 
-            return parsed || {
+            return valid ? parsed : {
                 totalScore: 5,
                 scores: { accuracy: 5, depth: 5, clarity: 5, examples: 5, bestPractices: 5 },
                 strengths: ["Avaliação automática falhou"],
@@ -165,9 +194,31 @@ Candidate Answer: ${candidateAnswer}
         }
     }
 
+    /**
+     * Dica curta para quem travou: aponta um caminho sem revelar a resposta.
+     * Retorna null se o modelo falhar, para a dica simplesmente não aparecer.
+     */
+    async getHint(questionText, expectedKeyPoints = [], locale = 'pt-BR') {
+        try {
+            const session = await this.getModel();
+            const langName = locale.startsWith('en') ? "English" : locale.startsWith('es') ? "Spanish" : "Portuguese";
+            const prompt = `You are helping a candidate in a technical interview who is stuck.
+Give ONE short hint (at most two sentences) in ${langName} that points to the concept to start from.
+Do NOT give the full answer. Output ONLY the hint text.
+
+Question: ${questionText}
+Topics the answer should cover: ${expectedKeyPoints.join(', ')}`;
+            const hint = (await session.prompt(prompt)).trim();
+            return hint || null;
+        } catch (e) {
+            console.error("[AIService] Erro ao gerar dica:", e);
+            return null;
+        }
+    }
+
     async translateText(text, targetLocale) {
         if (targetLocale.startsWith('en')) return text; // Já está em inglês
-        
+
         try {
             const session = await this.getModel();
             const langName = targetLocale.startsWith('pt') ? "Portuguese (Brazil)" : targetLocale.startsWith('es') ? "Spanish" : "Portuguese";

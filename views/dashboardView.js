@@ -1,3 +1,5 @@
+import { escapeHtml } from '../utils/html.js';
+
 export class DashboardView {
   constructor() {
     this.elements = {
@@ -5,6 +7,7 @@ export class DashboardView {
       finalScore: document.getElementById('final-score'),
       canvas: document.getElementById('score-chart'),
       weakSpots: document.getElementById('weak-spots-list'),
+      radarText: document.getElementById('radar-text'),
       exportBtn: document.getElementById('export-btn'),
       restartBtn: document.getElementById('restart-btn'),
       homeBtn: document.getElementById('home-btn')
@@ -18,17 +21,34 @@ export class DashboardView {
 
     this.elements.finalScore.textContent = Math.round(sessionScore.overall);
     this.drawRadarChart(sessionScore);
+    this.renderRadarText(sessionScore);
     this.renderWeakSpots(sessionScore.weakestTopics);
+  }
+
+  _radarAverages(sessionScore) {
+    return sessionScore.dimensionAverages || {
+      accuracy: 0, depth: 0, clarity: 0, examples: 0, bestPractices: 0
+    };
+  }
+
+  // Alternativa textual ao gráfico, para leitores de tela e quem não enxerga o canvas
+  renderRadarText(sessionScore) {
+    const labels = {
+      accuracy: 'Precisão', depth: 'Profundidade', clarity: 'Clareza',
+      examples: 'Exemplos', bestPractices: 'Boas Práticas'
+    };
+    const averages = this._radarAverages(sessionScore);
+    this.elements.radarText.innerHTML = Object.entries(labels)
+      .map(([key, label]) => `<li>${escapeHtml(label)}: ${escapeHtml(averages[key].toFixed(1))}/10</li>`)
+      .join('');
   }
 
   drawRadarChart(sessionScore) {
     const ctx = this.ctx;
     const labels = ['Precisão', 'Profundidade', 'Clareza', 'Exemplos', 'Boas Práticas'];
-    
+
     // Use averaged dimensions from all questions
-    const averages = sessionScore.dimensionAverages || {
-      accuracy: 0, depth: 0, clarity: 0, examples: 0, bestPractices: 0
-    };
+    const averages = this._radarAverages(sessionScore);
 
     const data = [
       averages.accuracy,
@@ -37,7 +57,7 @@ export class DashboardView {
       averages.examples,
       averages.bestPractices
     ];
-    
+
     const centerX = this.elements.canvas.width / 2;
     const centerY = this.elements.canvas.height / 2;
     const radius = 100;
@@ -108,7 +128,7 @@ export class DashboardView {
     this.elements.weakSpots.innerHTML = `
       <h3>🔍 Tópicos para Focar</h3>
       <div class="weak-topics-badges">
-        ${topics.length > 0 ? topics.map(t => `<span class="badge warning">${t}</span>`).join('') : '<p>Continue praticando para identificar pontos fracos!</p>'}
+        ${topics.length > 0 ? topics.map(t => `<span class="badge warning">${escapeHtml(t)}</span>`).join('') : '<p>Continue praticando para identificar pontos fracos!</p>'}
       </div>
     `;
   }

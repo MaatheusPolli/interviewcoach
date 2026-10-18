@@ -17,6 +17,9 @@ O **InterviewCoach** é uma ferramenta de preparação para processos seletivos 
 ---
 
 ## 🚀 Funcionalidades Atuais
+
+![Demonstração do InterviewCoach](docs/demo.gif)
+
 - **5 Trilhas de Conhecimento:** Frontend, Backend, Dados, Mobile e DevOps.
 - **Tradução Automática via IA:** As perguntas são traduzidas em tempo real para o idioma selecionado (PT/EN/ES) usando o Gemini Nano.
 - **Áudio Sob Demanda:** Controle total sobre o som. Ouça a pergunta apenas quando quiser clicando no botão de play.
@@ -27,6 +30,9 @@ O **InterviewCoach** é uma ferramenta de preparação para processos seletivos 
 - **Navegação SPA Fluida:** Interface sem reloads de página, garantindo rapidez e preservação de estado.
 - **Modo Escuro (Dark Mode):** Suporte nativo a tema escuro com persistência de preferência.
 - **Customização por JD:** Cole a descrição da vaga e a IA selecionará as perguntas mais relevantes para aquele cargo.
+- **Ready Score e Badges:** Média das últimas entrevistas e conquistas locais (ex: "Especialista em Backend") no histórico.
+- **Dicas em Tempo Real:** Se você ficar 5 segundos sem escrever, a IA sugere um caminho para destravar a resposta (desligado no modo cronometrado).
+- **Filtro por Tópico:** Pratique só um assunto dentro da trilha (ex: apenas React em Frontend).
 - **PWA (Instalável):** O app pode ser instalado e funciona offline após o primeiro acesso.
 
 ---
@@ -108,8 +114,11 @@ Este projeto **não utiliza `.env` clássico** por ser client-side. A configura�
 ## 🧪 Testes
 
 ```bash
-npm test        # c8 + tests/integration.test.js
+npm test        # c8 + tests/integration.test.js (testes unitários com mocks)
+npm run e2e     # smoke E2E com Playwright e LanguageModel simulado
 ```
+
+Na primeira execução do E2E, instale o navegador: `npx playwright install chromium`.
 
 ## 🤝 Contribuição
 

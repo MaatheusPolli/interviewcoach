@@ -12,7 +12,8 @@ export class InterviewView {
       submitBtn: document.getElementById('submit-answer-btn'),
       audioToggleBtn: document.getElementById('audio-toggle-btn'),
       playQuestionBtn: document.getElementById('play-question-btn'),
-      progressFill: document.getElementById('interview-progress-fill')
+      progressFill: document.getElementById('interview-progress-fill'),
+      hintBox: document.getElementById('hint-box')
     };
   }
 
@@ -104,6 +105,20 @@ export class InterviewView {
   showLoading(isLoading) {
     this.elements.submitBtn.disabled = isLoading;
     this.elements.submitBtn.textContent = isLoading ? 'ANALISANDO...' : 'ENVIAR RESPOSTA';
+  }
+
+  showHint(text) {
+    this.elements.hintBox.textContent = `💡 Dica: ${text}`;
+    this.elements.hintBox.classList.remove('hidden');
+  }
+
+  clearHint() {
+    this.elements.hintBox.textContent = '';
+    this.elements.hintBox.classList.add('hidden');
+  }
+
+  onAnswerInput(callback) {
+    this.elements.answerInput.addEventListener('input', callback);
   }
 
   onMicClick(callback) {

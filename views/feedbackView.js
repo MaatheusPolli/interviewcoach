@@ -1,3 +1,5 @@
+import { escapeHtml } from '../utils/html.js';
+
 export class FeedbackView {
   constructor() {
     this.elements = {
@@ -25,23 +27,23 @@ export class FeedbackView {
     this.elements.content.innerHTML = `
       <div class="overall-result">
         <span class="label">Precisão Técnica:</span>
-        <span class="score-badge ${getScoreClass(f.scores.accuracy)}">${f.scores.accuracy}/10</span>
+        <span class="score-badge ${getScoreClass(f.scores.accuracy)}">${escapeHtml(f.scores.accuracy)}/10</span>
       </div>
 
       <div class="feedback-section">
         <h3>✅ Pontos Fortes</h3>
-        <ul>${f.strengths.map(s => `<li>${s}</li>`).join('')}</ul>
+        <ul>${f.strengths.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
       </div>
 
       <div class="feedback-section">
         <h3>⚠️ Pontos a Melhorar</h3>
-        <ul>${f.missing.map(m => `<li>${m}</li>`).join('')}</ul>
-        <p><strong>Sugestão:</strong> ${f.improvement}</p>
+        <ul>${f.missing.map(m => `<li>${escapeHtml(m)}</li>`).join('')}</ul>
+        <p><strong>Sugestão:</strong> ${escapeHtml(f.improvement)}</p>
       </div>
 
       <div class="feedback-section">
         <h3>💡 Resposta Modelo</h3>
-        <p class="model-answer">${f.modelAnswer}</p>
+        <p class="model-answer">${escapeHtml(f.modelAnswer)}</p>
       </div>
     `;
   }

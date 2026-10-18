@@ -1,4 +1,5 @@
-const CACHE_NAME = 'interviewcoach-v2';
+// Mantenha a versão igual à de package.json: um teste verifica essa sincronia.
+const CACHE_NAME = 'interviewcoach-v1.1.0';
 const ASSETS = [
   './',
   './index.html',
@@ -6,6 +7,8 @@ const ASSETS = [
   './index.js',
   './manifest.json',
   './services/aiService.js',
+  './services/feedbackSchema.js',
+  './services/gamificationService.js',
   './services/voiceService.js',
   './services/storageService.js',
   './services/scoringService.js',
@@ -15,6 +18,7 @@ const ASSETS = [
   './views/feedbackView.js',
   './views/dashboardView.js',
   './views/historyView.js',
+  './utils/html.js',
   './data/questions-frontend.json',
   './data/questions-backend.json',
   './data/questions-data.json',
@@ -25,6 +29,19 @@ const ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+  );
+});
+
+// Remove caches de versões anteriores para não servir JS antigo
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((key) => key.startsWith('interviewcoach-') && key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      )
+    )
   );
 });
 

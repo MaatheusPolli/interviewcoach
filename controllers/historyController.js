@@ -1,3 +1,5 @@
+import { summarizeProgress } from '../services/gamificationService.js';
+
 export class HistoryController {
   constructor(storageService, historyView) {
     this.storage = storageService;
@@ -6,6 +8,8 @@ export class HistoryController {
 
   async showHistory() {
     const sessions = await this.storage.getAllSessions();
-    this.view.show(sessions.reverse()); // Newest first
+    // Calcula antes de inverter: o progresso depende da ordem cronológica
+    const progress = summarizeProgress(sessions);
+    this.view.show(sessions.reverse(), progress); // Newest first
   }
 }

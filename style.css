@@ -417,6 +417,29 @@ textarea {
 .badge.warning { background: #fef3c7; color: #92400e; }
 .badge.success { background: #d1fae5; color: #065f46; }
 
+.radar-text {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  display: grid;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.hint-box {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 4px solid #f59e0b;
+  background: #fef3c7;
+  color: #78350f;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.progress-summary {
+  margin-bottom: 16px;
+}
+
 .weak-topics-badges {
     display: flex;
     flex-wrap: wrap;

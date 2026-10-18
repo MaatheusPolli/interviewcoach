@@ -13,6 +13,9 @@ export class SessionController {
     this.isListening = false;
     this.isFollowUp = false;
     this.isAudioEnabled = true;
+    this.hintTimer = null;
+    this.hintShown = false;
+    this.hintDelayMs = 5000;
   }
 
   async init(config) {
@@ -25,8 +28,12 @@ export class SessionController {
 
     try {
       const response = await fetch(`data/questions-${config.track}.json`);
-      const allQuestions = await response.json();
-      
+      const trackQuestions = await response.json();
+      // Filtro opcional por tópico (ex: só 'React' em Frontend)
+      const allQuestions = config.topic
+        ? trackQuestions.filter(q => q.topic === config.topic)
+        : trackQuestions;
+
       // Tenta filtrar pelo nível exato
       let filtered = allQuestions.filter(q => q.level === config.level);
       
@@ -94,6 +101,7 @@ export class SessionController {
     this.views.interview.onMicClick(() => this.handleMicToggle());
     this.views.interview.onPlayQuestion(() => this.handlePlayQuestion());
     this.views.interview.onSubmit(() => this.handleSubmitAnswer());
+    this.views.interview.onAnswerInput(() => this.resetHinter());
     this.views.interview.onAudioToggle(() => this.handleAudioToggle());
     this.views.feedback.onNext(() => this.handleNextStep());
     this.views.dashboard.onRestart(() => this.init(this.session.config));
@@ -161,10 +169,54 @@ export class SessionController {
     question.translatedQuestion = displayQuestion;
 
     this.stopTimer();
+    this.startHinter(question);
     if (this.session.config.mode === 'full') {
       this.startTimer(120);
     } else {
       this.views.interview.toggleTimer(false);
+    }
+  }
+
+  // Dica em tempo real: após silêncio, sugere um caminho para destravar a resposta
+  startHinter(question) {
+    this.stopHinter();
+    // Modo cronometrado não recebe dicas
+    if (this.session.config.mode === 'full') return;
+
+    this.hintShown = false;
+    this.views.interview.clearHint();
+    this.hintTimer = setTimeout(() => this.showHint(question), this.hintDelayMs);
+  }
+
+  async showHint(question) {
+    this.hintTimer = null;
+    if (this.hintShown || this.views.interview.getAnswer().trim()) return;
+
+    const questionIndex = this.session.currentIndex;
+    const hint = await this.services.ai.getHint(
+      question.question,
+      question.expectedKeyPoints || [],
+      this.session.config.language
+    );
+    // Ignora se o usuário já começou a responder ou se a pergunta mudou
+    if (!hint || this.hintShown || this.session.currentIndex !== questionIndex) return;
+    if (this.views.interview.getAnswer().trim()) return;
+
+    this.hintShown = true;
+    this.views.interview.showHint(hint);
+  }
+
+  // Reinicia a contagem de silêncio sempre que há atividade do usuário
+  resetHinter() {
+    if (this.session.config?.mode === 'full' || this.hintShown) return;
+    const question = this.session.questions[this.session.currentIndex];
+    if (question) this.startHinter(question);
+  }
+
+  stopHinter() {
+    if (this.hintTimer) {
+      clearTimeout(this.hintTimer);
+      this.hintTimer = null;
     }
   }
 
@@ -197,8 +249,12 @@ export class SessionController {
     } else {
       this.views.interview.toggleMic(true);
       this.isListening = true;
+      this.resetHinter();
       this.services.voice.startListening(
-        (interim) => this.views.interview.setInterimTranscript(interim),
+        (interim) => {
+          this.views.interview.setInterimTranscript(interim);
+          this.resetHinter();
+        },
         (final) => {
           const currentText = this.views.interview.getAnswer();
           this.views.interview.setAnswer(currentText + ' ' + final);
@@ -210,6 +266,7 @@ export class SessionController {
 
   async handleSubmitAnswer(isAutoSubmit = false) {
     this.stopTimer();
+    this.stopHinter();
     const answer = this.views.interview.getAnswer();
     if (!answer.trim() && !isAutoSubmit) return; 
 

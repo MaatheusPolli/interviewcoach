@@ -2,6 +2,7 @@ import { AIService } from './services/aiService.js';
 import { VoiceService } from './services/voiceService.js';
 import { StorageService } from './services/storageService.js';
 import { ScoringService } from './services/scoringService.js';
+import { escapeHtml } from './utils/html.js';
 
 import { InterviewView } from './views/interviewView.js';
 import { FeedbackView } from './views/feedbackView.js';
@@ -63,6 +64,7 @@ import { HistoryController } from './controllers/historyController.js';
   const { errors, availability } = await aiService.checkRequirements();
   
   if (errors || availability === 'after-download') {
+    // 'no' já vem com errors preenchido, então cai no ramo de erro acima
     const errorOverlay = document.getElementById('error-overlay');
     const errorTitle = document.getElementById('error-title');
     const errorList = document.getElementById('error-list');
@@ -72,7 +74,7 @@ import { HistoryController } from './controllers/historyController.js';
     const errorFooter = document.getElementById('error-footer');
 
     if (errors) {
-      errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
+      errorList.innerHTML = errors.map(err => `<li>${escapeHtml(err)}</li>`).join('');
       errorOverlay.classList.remove('hidden');
       return;
     }
@@ -110,11 +112,32 @@ import { HistoryController } from './controllers/historyController.js';
 
   if (yearSpan) yearSpan.textContent = new Date().getFullYear();
 
+  // Preenche o filtro de tópicos com os tópicos da trilha escolhida
+  const topicSelect = document.getElementById('topic-select');
+  const loadTopics = async () => {
+    const previous = topicSelect.value;
+    topicSelect.innerHTML = '<option value="">Todos os tópicos</option>';
+    try {
+      const response = await fetch(`data/questions-${trackSelect.value}.json`);
+      const questions = await response.json();
+      const topics = [...new Set(questions.map(q => q.topic))].sort((a, b) => a.localeCompare(b));
+      topicSelect.innerHTML += topics
+        .map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`)
+        .join('');
+      if (topics.includes(previous)) topicSelect.value = previous;
+    } catch (e) {
+      console.warn('[Init] Não foi possível carregar os tópicos:', e);
+    }
+  };
+  trackSelect.addEventListener('change', loadTopics);
+  loadTopics();
+
   // Navigation Event Listeners
   startBtn.addEventListener('click', () => {
     const config = {
       track: trackSelect.value,
       level: levelSelect.value,
+      topic: topicSelect.value,
       mode: modeSelect.value,
       language: languageSelect.value,
       jd: jdInput.value.trim()
